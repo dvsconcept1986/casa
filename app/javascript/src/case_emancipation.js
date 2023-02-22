@@ -22,11 +22,11 @@ function resolveAsyncOperation (error) {
 
 // Adds or deletes an option from the current casa case
 //  @param    {string}  action One of the following:
-//    'add_category'    to add a category to the case
-//    'add_option'      to add an option to the case
-//    'delete_category' to remove a category from the case
-//    'delete_option'   to remove an option from the case
-//    'set_option'      to set the option for a mutually exclusive category
+//    "add_category"    to add a category to the case
+//    "add_option"      to add an option to the case
+//    "delete_category" to remove a category from the case
+//    "delete_option"   to remove an option from the case
+//    "set_option"      to set the option for a mutually exclusive category
 //  @param    {integer | string}  checkItemId The id of either an emancipation option or an emancipation category to perform an action on
 //  @returns  {array} a jQuery jqXHR object. See https://api.jquery.com/jQuery.ajax/#jqXHR
 //  @throws   {TypeError}  for a parameter of the incorrect type
@@ -62,50 +62,90 @@ function saveCheckState (action, checkItemId) {
     })
 }
 
+export class Toggler {
+  constructor (emancipationCategory) {
+    this.emancipationCategory = emancipationCategory
+    this.categoryCollapseIcon = this.emancipationCategory.find('.category-collapse-icon')
+    this.categoryOptionsContainer = this.emancipationCategory.siblings('.category-options')
+  }
+
+  manageTogglerText () {
+    if (this.emancipationCategory.attr('data-is-open') === 'true') {
+      this.categoryCollapseIcon.text('–')
+    } else if (this.emancipationCategory.attr('data-is-open') === 'false') {
+      this.categoryCollapseIcon.text('+')
+    }
+  }
+
+  openChildren () {
+    this.categoryOptionsContainer.show()
+    this.emancipationCategory.attr('data-is-open', 'true')
+  }
+
+  closeChildren () {
+    this.categoryOptionsContainer.hide()
+    this.emancipationCategory.attr('data-is-open', 'false')
+  }
+
+  deselectChildren (notifierCallback) {
+    this.categoryOptionsContainer.children().filter(function () {
+      return $(this).find('input').prop('checked')
+    }).each(function () {
+      const checkbox = $(this).find('input')
+
+      checkbox.prop('checked', false)
+      notifierCallback(checkbox.next().text())
+    })
+  }
+}
+
 $('document').ready(() => {
-  if (!(/casa_cases\/[A-Z\-0-9]+\/emancipation/.test(window.location.pathname))) {
+  if (!((/casa_cases\/[A-Za-z\-0-9]+\/emancipation/).test(window.location.pathname))) {
     return
   }
 
   const asyncNotificationsElement = $('#async-notifications')
   emancipationPage.notifier = new Notifier(asyncNotificationsElement)
 
-  $('.emancipation-category').click(function () {
-    const category = $(this)
-    const categoryCheckbox = category.find('input[type="checkbox"]')
-    const categoryCollapseIcon = category.find('span')
-    const categoryCheckboxChecked = categoryCheckbox.is(':checked')
-    const categoryOptionsContainer = category.siblings('.category-options')
+  $('.category-collapse-icon').on('click', function () {
+    const categoryCollapseIcon = $(this)
+    const emancipationCategory = categoryCollapseIcon.parent()
+    const toggler = new Toggler(emancipationCategory)
 
-    if (!category.data('disabled')) {
-      category.data('disabled', true)
-      category.addClass('disabled')
+    if (emancipationCategory.attr('data-is-open') === 'true') {
+      toggler.closeChildren()
+      toggler.manageTogglerText()
+    } else if (emancipationCategory.attr('data-is-open') === 'false') {
+      toggler.openChildren()
+      toggler.manageTogglerText()
+    }
+  })
+
+  $('.emacipation-category-input-label-pair').on('click', function () {
+    const emacipationCategoryInputLabelPair = $(this)
+    const emancipationCategory = emacipationCategoryInputLabelPair.parent()
+    const toggler = new Toggler(emancipationCategory)
+    const categoryCheckbox = emancipationCategory.find('.emancipation-category-check-box')
+    const categoryCheckboxChecked = categoryCheckbox.is(':checked')
+
+    if (!emancipationCategory.data('disabled')) {
+      emancipationCategory.data('disabled', true)
+      emancipationCategory.addClass('disabled')
       categoryCheckbox.prop('disabled', 'disabled')
 
       let saveAction,
-        collapseIcon,
         doneCallback
 
       if (categoryCheckboxChecked) {
-        collapseIcon = '+'
         doneCallback = () => {
-          categoryOptionsContainer.hide()
-
-          // Uncheck all category options
-          categoryOptionsContainer.children().filter(function () {
-            return $(this).find('input').prop('checked')
-          }).each(function () {
-            const checkbox = $(this).find('input')
-
-            checkbox.prop('checked', false)
-            emancipationPage.notifier.notify('Unchecked ' + checkbox.next().text(), 'info')
-          })
+          toggler.manageTogglerText()
+          toggler.deselectChildren((text) => emancipationPage.notifier.notify('Unchecked ' + text, 'info'))
         }
         saveAction = 'delete_category'
       } else {
-        collapseIcon = '−'
         doneCallback = () => {
-          categoryOptionsContainer.show()
+          toggler.openChildren()
+          toggler.manageTogglerText()
         }
         saveAction = 'add_category'
       }
@@ -114,17 +154,17 @@ $('document').ready(() => {
         .done(function () {
           doneCallback()
           categoryCheckbox.prop('checked', !categoryCheckboxChecked)
-          categoryCollapseIcon.text(collapseIcon)
+          toggler.manageTogglerText()
         })
         .always(function () {
-          category.data('disabled', false)
-          category.removeClass('disabled')
+          emancipationCategory.data('disabled', false)
+          emancipationCategory.removeClass('disabled')
           categoryCheckbox.prop('disabled', false)
         })
     }
   })
 
-  $('.check-item').click(function () {
+  $('.check-item').on('click', function () {
     const checkComponent = $(this)
     const checkElement = checkComponent.find('input')
 

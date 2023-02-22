@@ -220,4 +220,36 @@ RSpec.describe "/users", type: :request do
       end
     end
   end
+  describe "PATCH /add_language" do
+    let(:volunteer) { create(:volunteer) }
+    before { sign_in volunteer }
+
+    context "when request params are valid" do
+      let(:language) { create(:language) }
+      before(:each) do
+        patch add_language_users_path(volunteer), params: {
+          language_id: language.id
+        }
+      end
+
+      it "should add language to current user" do
+        expect(volunteer.languages).to include(language)
+      end
+
+      it "should notify the user that the language has been added" do
+        expect(response).to redirect_to(edit_users_path)
+        expect(flash[:notice]).to eq "#{language.name} was added to your languages list."
+      end
+    end
+
+    context "when request params are invalid" do
+      it "should display an error message when the Language id is empty" do
+        patch add_language_users_path(volunteer), params: {
+          language_id: ""
+        }
+        expect(response).to have_http_status(200)
+        expect(response.body).to include("Please select a language before adding.")
+      end
+    end
+  end
 end

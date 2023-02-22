@@ -177,6 +177,7 @@ RSpec.describe "Edit CASA Case", type: :system do
     it_behaves_like "shows court dates links"
 
     it "edits case", js: true do
+      stub_twillio
       visit casa_case_path(casa_case)
       expect(page).to have_text("Court Report Status: Not submitted")
       visit edit_casa_case_path(casa_case)
@@ -456,11 +457,14 @@ of it unless it was included in a previous court report.")
 
     let!(:reports) do
       [5, 11, 23, 44, 91].map do |n|
-        report = CaseCourtReport.new(
+        path_to_template = "app/documents/templates/default_report_template.docx"
+        args = {
           volunteer_id: volunteer.id,
           case_id: casa_case.id,
-          path_to_template: "app/documents/templates/default_report_template.docx"
-        )
+          path_to_template: path_to_template
+        }
+        context = CaseCourtReportContext.new(args).context
+        report = CaseCourtReport.new(path_to_template: path_to_template, context: context)
         casa_case.court_reports.attach(io: StringIO.new(report.generate_to_string), filename: "report#{n}.docx")
         attached_report = casa_case.latest_court_report
         attached_report.created_at = n.days.ago
@@ -608,4 +612,12 @@ of it unless it was included in a previous court report.")
       end
     end
   end
+end
+
+def stub_twillio
+  twillio_client = instance_double(Twilio::REST::Client)
+  messages = instance_double(Twilio::REST::Api::V2010::AccountContext::MessageList)
+  allow(Twilio::REST::Client).to receive(:new).with("Aladdin", "open sesame", "articuno34").and_return(twillio_client)
+  allow(twillio_client).to receive(:messages).and_return(messages)
+  allow(messages).to receive(:list).and_return([])
 end

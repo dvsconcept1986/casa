@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe "casa_org/edit", type: :system do
   let(:organization) { build(:casa_org) }
   let!(:languages) do
-    5.times { create(:language, casa_org: organization) }
+    5.times { create(:language, name: Faker::Nation.unique.language, casa_org: organization) }
   end
   let(:admin) { build(:casa_admin, casa_org_id: organization.id) }
   let!(:contact_type_group) { create(:contact_type_group, casa_org: organization, name: "Contact type group 1") }
@@ -13,8 +13,10 @@ RSpec.describe "casa_org/edit", type: :system do
   let!(:sent_email) { create(:sent_email, casa_org: organization, user: admin) }
 
   before do
+    stub_twillio
     sign_in admin
     visit edit_casa_org_path(organization)
+    Faker::Nation.unique.clear # Clears used values for Faker::Nation
   end
 
   it "loads casa org edit page" do
@@ -126,4 +128,12 @@ RSpec.describe "casa_org/edit", type: :system do
   it "requires name text field" do
     expect(page).to have_selector("input[required=required]", id: "casa_org_name")
   end
+end
+
+def stub_twillio
+  twillio_client = instance_double(Twilio::REST::Client)
+  messages = instance_double(Twilio::REST::Api::V2010::AccountContext::MessageList)
+  allow(Twilio::REST::Client).to receive(:new).with("Aladdin", "open sesame", "articuno34").and_return(twillio_client)
+  allow(twillio_client).to receive(:messages).and_return(messages)
+  allow(messages).to receive(:list).and_return([])
 end

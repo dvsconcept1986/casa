@@ -17,6 +17,27 @@ RSpec.describe CasaOrg, type: :model do
     expect(new_org.valid?).to be false
   end
 
+  describe "CasaOrgValidator" do
+    let(:casa_org) { build(:casa_org) }
+
+    it "delegates phone validation to PhoneNumberHelper" do
+      expect_any_instance_of(PhoneNumberHelper).to receive(:valid_phone_number).once.with(casa_org.twilio_phone_number)
+      casa_org.valid?
+    end
+  end
+
+  describe "validate validate_twilio_credentials" do
+    let(:casa_org) { create(:casa_org) }
+
+    it "validates twillio credentials on update", :aggregate_failures do
+      %i[twilio_account_sid twilio_api_key_sid].each do |field|
+        update_successful = casa_org.update(field => "")
+        expect(update_successful).to be false
+        expect(casa_org.errors[:base]).to eq ["Your Twilio credentials are incorrect, kindly check and try again."]
+      end
+    end
+  end
+
   describe "Attachment" do
     it "is valid" do
       aggregate_failures do
@@ -65,11 +86,31 @@ RSpec.describe CasaOrg, type: :model do
     before { org.generate_contact_types_and_hearing_types }
 
     describe "generates default contact type groups" do
-      let(:groups) { ContactTypeGroup.where(casa_org: org).joins(:contact_types).pluck(:name, "contact_types.name") }
-      let(:groups_hash) { groups.group_by(&:first).map { |k, a| [k, a.map(&:last)] }.to_h }
+      let(:groups) { ContactTypeGroup.where(casa_org: org).joins(:contact_types).pluck(:name, "contact_types.name").sort }
 
       it "matches default contact type groups" do
-        expect(groups_hash).to match_array(ContactTypeGroup::DEFAULT_CONTACT_TYPE_GROUPS.stringify_keys)
+        expect(groups).to eq([["CASA", "Supervisor"],
+          ["CASA", "Youth"],
+          ["Education", "Guidance Counselor"],
+          ["Education", "IEP Team"],
+          ["Education", "School"],
+          ["Education", "Teacher"],
+          ["Family", "Aunt Uncle or Cousin"],
+          ["Family", "Fictive Kin"],
+          ["Family", "Grandparent"],
+          ["Family", "Other Family"],
+          ["Family", "Parent"],
+          ["Family", "Sibling"],
+          ["Health", "Medical Professional"],
+          ["Health", "Mental Health Therapist"],
+          ["Health", "Other Therapist"],
+          ["Health", "Psychiatric Practitioner"],
+          ["Legal", "Attorney"],
+          ["Legal", "Court"],
+          ["Placement", "Caregiver Family"],
+          ["Placement", "Foster Parent"],
+          ["Placement", "Therapeutic Agency Worker"],
+          ["Social Services", "Social Worker"]])
       end
     end
 
