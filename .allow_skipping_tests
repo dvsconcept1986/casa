@@ -11,6 +11,7 @@ controllers/casa_org_controller.rb
 controllers/case_assignments_controller.rb
 controllers/case_contact_reports_controller.rb
 controllers/case_contacts/followups_controller.rb
+controllers/case_contacts_controller.rb
 controllers/case_court_orders_controller.rb
 controllers/case_court_reports_controller.rb
 controllers/checklist_items_controller.rb
@@ -38,6 +39,7 @@ controllers/other_duties_controller.rb
 controllers/reports_controller.rb
 controllers/supervisor_volunteers_controller.rb
 controllers/supervisors_controller.rb
+controllers/users/passwords_controller.rb
 controllers/users/sessions_controller.rb
 controllers/users_controller.rb
 controllers/volunteers_controller.rb
